@@ -17,6 +17,10 @@ class Robot1D:
         self.process_noise_std = process_noise_std
         self.observation_noise_std = observation_noise_std
         
+        # 履歴保存用
+        self.position_history = []
+        self.observation_history = []
+        
     def move(self, distance):
         """
         Parameters

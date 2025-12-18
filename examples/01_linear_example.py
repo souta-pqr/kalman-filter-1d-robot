@@ -1,81 +1,106 @@
 import sys
 import os
 import numpy as np
+import matplotlib.pyplot as plt
 
 # パスを追加
 sys.path.append(os.path.join(os.path.dirname(__file__), '..'))
 
 from src.robot_simulator import Robot1D
 from src.linear_kf import LinearKalmanFilter
-from src.visualizer import plot_with_estimates, plot_kalman_gain
+from src.visualizer import plot_with_estimates
+
+
+def run_simulation(Q, R, robot, label):
+    """カルマンフィルタのシミュレーションを実行"""
+    kf = LinearKalmanFilter(Q=Q, R=R, x0=0.0, P0=1.0)
+    
+    estimates = [kf.x]
+    
+    for step in range(1, 11):
+        obs = robot.observation_history[step]
+        estimate, K = kf.filter_step(z=obs, u=1.0)
+        estimates.append(estimate)
+    
+    return estimates
 
 
 def main():
-    
+
     # 乱数シード
     np.random.seed(42)
     
-    # ロボットを作成（プロセスノイズあり）
+    # ロボットを作成（データを事前生成）
     process_noise = 0.1
     observation_noise = 0.5
     robot = Robot1D(initial_position=0.0,
                     process_noise_std=process_noise,
                     observation_noise_std=observation_noise)
     
-    # カルマンフィルタの初期化
-    Q = process_noise**2  # プロセスノイズの共分散
-    R = observation_noise**2  # 観測ノイズの共分散
-    kf = LinearKalmanFilter(Q=Q, R=R, x0=0.0, P0=1.0)
+    # 真の位置と観測を事前生成
+    robot.position_history = [0.0]
+    robot.observation_history = [robot.observe()]
     
-    print(f"\nプロセスノイズ Q: {Q:.4f}")
-    print(f"観測ノイズ R: {R:.2f}")
-    print(f"初期位置: {robot.get_position():.1f}m")
-    print(f"初期予測誤差 P: {kf.P}")
-    
-    # データ記録
-    true_positions = [robot.get_position()]
-    observations = [robot.observe()]
-    estimates = [kf.x]
-    kalman_gains = []
-    
-    # ロボットを10回動かす
-    print("\n--- シミュレーション ---")
     for step in range(1, 11):
-        # 1m前進（ノイズあり）
         true_pos = robot.move(distance=1.0)
-        obs = robot.observe()
-        
-        true_positions.append(true_pos)
-        observations.append(obs)
-        
-        # カルマンフィルタで推定
-        estimate, K = kf.filter_step(z=obs, u=1.0)
-        
-        estimates.append(estimate)
-        kalman_gains.append(K)
-        
-        # 実際の移動量
-        actual_move = true_pos - true_positions[-2]
-        print(f"ステップ {step}: 真値={true_pos:.2f}m(移動{actual_move:.2f}m), "
-              f"観測={obs:.2f}m, 推定={estimate:.2f}m, K={K:.3f}")
+        robot.position_history.append(true_pos)
+        robot.observation_history.append(robot.observe())
     
-    # 結果
+    print(f"\nロボットの実際のノイズ:")
+    print(f"  プロセスノイズ: {process_noise}")
+    print(f"  観測ノイズ: {observation_noise}")
+    
+    
+    # 3つの設定でシミュレーション
+    print("\n--- 3つの設定で比較 ---\n")
+    
+    # 設定1: 正しい値
+    Q1 = process_noise**2
+    R1 = observation_noise**2
+    estimates1 = run_simulation(Q1, R1, robot, "正しいQ,R")
+    print(f"設定1: Q={Q1:.4f}, R={R1:.2f} (正しい値)")
+    errors1 = [abs(t - e) for t, e in zip(robot.position_history[1:], estimates1[1:])]
+    print(f"  平均誤差: {np.mean(errors1):.3f}m\n")
+    
+    # 設定2: Qを大きく（動きが不確実と仮定）
+    Q2 = 0.1
+    R2 = observation_noise**2
+    estimates2 = run_simulation(Q2, R2, robot, "大きいQ")
+    print(f"設定2: Q={Q2:.4f}, R={R2:.2f} (Qを大きく→観測を信じる)")
+    errors2 = [abs(t - e) for t, e in zip(robot.position_history[1:], estimates2[1:])]
+    print(f"  平均誤差: {np.mean(errors2):.3f}m\n")
+    
+    # 設定3: Qを小さく（動きが確実と仮定）
+    Q3 = 0.001
+    R3 = observation_noise**2
+    estimates3 = run_simulation(Q3, R3, robot, "小さいQ")
+    print(f"設定3: Q={Q3:.4f}, R={R3:.2f} (Qを小さく→予測を信じる)")
+    errors3 = [abs(t - e) for t, e in zip(robot.position_history[1:], estimates3[1:])]
+    print(f"  平均誤差: {np.mean(errors3):.3f}m\n")
+    
     print("\n--- 結果 ---")
-    print(f"最終の真の位置: {robot.get_position():.2f}m")
-    print(f"最後の観測値: {observations[-1]:.2f}m")
-    print(f"最後の推定値: {estimates[-1]:.2f}m")
-    print(f"最終カルマンゲイン: {kalman_gains[-1]:.3f}")
-    print(f"最終予測誤差: {kf.P:.4f}")
-    
-    # 誤差計算
-    errors = [abs(t - e) for t, e in zip(true_positions[1:], estimates[1:])]
-    mean_error = np.mean(errors)
-    print(f"\n平均推定誤差: {mean_error:.2f}m")
+    print(f"設定1の誤差: {np.mean(errors1):.3f}m")
+    print(f"設定2の誤差: {np.mean(errors2):.3f}m (Q大→観測重視)")
+    print(f"設定3の誤差: {np.mean(errors3):.3f}m (Q小→予測重視)")
     
     # グラフ表示
     print("\nグラフを表示中...")
-    plot_with_estimates(true_positions, observations, estimates)
-    plot_kalman_gain(kalman_gains)
+    steps = range(len(robot.position_history))
+    
+    plt.figure(figsize=(12, 6))
+    plt.plot(steps, robot.position_history, 'g-', label='True Position', linewidth=2)
+    plt.plot(steps, robot.observation_history, 'rx', label='Observations', markersize=8, alpha=0.5)
+    plt.plot(steps, estimates1, 'b-', label=f'Correct Q,R (error={np.mean(errors1):.3f})', linewidth=2)
+    plt.plot(steps, estimates2, 'm--', label=f'Large Q (error={np.mean(errors2):.3f})', linewidth=2)
+    plt.plot(steps, estimates3, 'c-.', label=f'Small Q (error={np.mean(errors3):.3f})', linewidth=2)
+    
+    plt.xlabel('Time Step')
+    plt.ylabel('Position (m)')
+    plt.title('Effect of Q and R Parameters on Kalman Filter')
+    plt.legend()
+    plt.grid(True, alpha=0.3)
+    plt.show()
+
 
 if __name__ == "__main__":
     main()
