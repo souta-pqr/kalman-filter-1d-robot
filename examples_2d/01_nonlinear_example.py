@@ -14,13 +14,13 @@ def main():
 
     robot = Robot2D(
         initial_state=[0.0, 0.0, 0.0],
-        process_noise_std=[0.0, 0.0, 0.0],
+        process_noise_std=[0.05, 0.05, 0.02],
         observation_noise_std=[0.3, 0.3, 0.1],
         dt=1.0
     )
     
     # EKF初期化
-    Q = np.diag([0.0, 0.0, 0.0])
+    Q = np.diag([0.05**2, 0.05**2, 0.02**2])
     R = np.diag([0.3**2, 0.3**2, 0.1**2])
     x0 = np.array([0.0, 0.0, 0.0])
     P0 = np.diag([1.0, 1.0, 1.0])
