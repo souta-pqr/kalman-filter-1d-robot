@@ -28,4 +28,4 @@ python examples_2d/02_animation_example.py
 
 ## 参考文献
 
-- [確率ロボティクス2025](https://github.com/ryuichiueda/slides_marp/tree/master/prob_robotics_2025)
+- [上田先生が開講された確率ロボティクスの授業](https://github.com/ryuichiueda/slides_marp/tree/master/prob_robotics_2025)
