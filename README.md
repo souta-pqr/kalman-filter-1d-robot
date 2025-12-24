@@ -2,6 +2,9 @@
 
 ノイズのある観測値からロボットの位置を推定するカルマンフィルタのシミュレーション
 
+[![Test](https://github.com/souta-pqr/kalman-filter-robot-simulation/workflows/Test/badge.svg)](https://github.com/souta-pqr/kalman-filter-robot-simulation/actions/workflows/test.yml)
+[![Python](https://img.shields.io/badge/python-3.9%20%7C%203.10%20%7C%203.11%20%7C%203.12%20%7C%203.13-blue)]
+
 ## 概要
 
 本プロジェクトは、カルマンフィルタを実装し、ノイズを含むセンサ観測値から真の状態を推定するシミュレーションを行います。
